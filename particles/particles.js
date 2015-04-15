@@ -297,7 +297,7 @@ var smoke = new Emitter(30)
     .vel(-30,30,-30,30)
     .gravity(0,0)
     .life(0.3,0.6)
-    .delay(0, 0.4)
+    .delay(0, 0.2)
     .img(smokeImgs)
 ;
 
@@ -306,7 +306,7 @@ var e = new Emitter(30)
         .vel(-100,100,-100,100)
         .gravity(0,0)
         .life(0.2, 0.4)
-        .delay(0,0.2)
+        .delay(0,0.1)
         .img(imgs)
     ;
 
