@@ -276,10 +276,10 @@ var imgs = fg.createImgs(60);
 
 var sfg = new FramesGenerator();
 sfg.size.dataPoint(0.0, 0);
-sfg.size.dataPoint(0.2, 14);
-sfg.size.dataPoint(0.7, 18);
-sfg.size.dataPoint(0.8, 16);
-sfg.size.dataPoint(1.0, 17);
+sfg.size.dataPoint(0.2, 8);
+sfg.size.dataPoint(0.7, 10);
+sfg.size.dataPoint(0.8, 9);
+sfg.size.dataPoint(1.0, 8);
 sfg.color.dataVec(0.0, [60/360, 1.0, 0.7, 0.8]);
 sfg.color.dataVec(0.15, [45/360, 1.0, 0.7, 0.5]);
 sfg.color.dataVec(0.3, [45/360, 1.0, 0.7, 0.5]);
@@ -293,7 +293,7 @@ canvas.width = 800;
 canvas.height = 600;
 var ctx = canvas.getContext("2d");
 
-var smoke = new Emitter(30)
+var smoke = new Emitter(50)
     .pos(200,200,0,20)
     .vel(-30,30,-30,30)
     .gravity(0,0)
