@@ -34,6 +34,14 @@ Emitter.prototype.init = function(){
         var p = this.particles[i];
         this.initParticle(p);
     }
+
+    if (this === smoke){
+        for (i = 0, l =this.particles.length; i<l; i++){
+            p = this.particles[i];
+            p.life = p.lifeMax = 0.8 - p.delay;
+        }
+    }
+
 };
 
 Emitter.prototype.initParticle = function(p){
@@ -290,7 +298,7 @@ var smokeImgs = sfg.createImgs(60);
 
 var flashfg = new FramesGenerator();
 flashfg.size.dataPoint(0.0, 0);
-flashfg.size.dataPoint(1.0, 16);
+flashfg.size.dataPoint(1.0, 18);
 flashfg.color.dataVec(0.0, [60/360, 1.0, 0.9, 0.7]);
 flashfg.color.dataVec(1.0, [60/360, 1.0, 0.9, 0.7]);
 
@@ -301,7 +309,7 @@ canvas.width = 800;
 canvas.height = 600;
 var ctx = canvas.getContext("2d");
 
-var smoke = new Emitter(50)
+var smoke = new Emitter(30)
         .pos(200,200,0,20)
         .vel(-30,30,-30,30)
         .gravity(0,0)
@@ -310,7 +318,7 @@ var smoke = new Emitter(50)
         .img(smokeImgs)
     ;
 
-var trail = new Emitter(30)
+var trail = new Emitter(50)
         .pos(200,200,5,10)
         .vel(-100,100,-100,100)
         .gravity(0,0)
