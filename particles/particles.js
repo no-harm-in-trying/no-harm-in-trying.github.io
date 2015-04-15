@@ -268,8 +268,8 @@ fg.size.dataPoint(0.8, 2);
 fg.size.dataPoint(1.0, 0);
 fg.color.dataVec(0.0, [60/360, 1.0, 1.0, 0.0]); // white
 fg.color.dataVec(0.3, [60/360, 1.0, 0.5, 0.6]); // yellow
-fg.color.dataVec(0.6, [50/360, 1.0, 0.5, 0.3]); // yellow
-fg.color.dataVec(0.8, [45/360, 1.0, 0.5, 0.3]);
+fg.color.dataVec(0.6, [60/360, 1.0, 0.5, 0.3]); // yellow
+fg.color.dataVec(0.8, [50/360, 1.0, 0.5, 0.3]);
 fg.color.dataVec(1.0, [0/360, 0.0, 0.6, 0.0]); // gray
 
 var imgs = fg.createImgs(60);
