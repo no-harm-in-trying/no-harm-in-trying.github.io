@@ -281,9 +281,9 @@ sfg.size.dataPoint(0.7, 18);
 sfg.size.dataPoint(0.8, 16);
 sfg.size.dataPoint(1.0, 17);
 sfg.color.dataVec(0.0, [60/360, 1.0, 0.7, 0.8]);
-sfg.color.dataVec(0.15, [55/360, 1.0, 0.7, 0.5]);
-sfg.color.dataVec(0.3, [55/360, 1.0, 0.7, 0.5]);
-sfg.color.dataVec(0.8, [45/360, 0.3, 0.9, 0.3]);
+sfg.color.dataVec(0.15, [45/360, 1.0, 0.7, 0.5]);
+sfg.color.dataVec(0.3, [45/360, 1.0, 0.7, 0.5]);
+sfg.color.dataVec(0.8, [40/360, 0.3, 0.9, 0.3]);
 sfg.color.dataVec(1.0, [30/360, 0.0, 0.9, 0.0]);
 
 var smokeImgs = sfg.createImgs(60);
