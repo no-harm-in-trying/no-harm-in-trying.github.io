@@ -288,22 +288,30 @@ sfg.color.dataVec(1.0, [30/360, 0.0, 0.9, 0.0]);
 
 var smokeImgs = sfg.createImgs(60);
 
+var flashfg = new FramesGenerator();
+flashfg.size.dataPoint(0.0, 0);
+flashfg.size.dataPoint(1.0, 16);
+flashfg.color.dataVec(0.0, [60/360, 1.0, 0.9, 0.7]);
+flashfg.color.dataVec(1.0, [60/360, 1.0, 0.9, 0.7]);
+
+flashimgs = flashfg.createImgs(60);
+
 var canvas = document.getElementById("canvas");
 canvas.width = 800;
 canvas.height = 600;
 var ctx = canvas.getContext("2d");
 
 var smoke = new Emitter(50)
-    .pos(200,200,0,20)
-    .vel(-30,30,-30,30)
-    .gravity(0,0)
-    .life(0.3,0.6)
-    .delay(0, 0.2)
-    .img(smokeImgs)
-;
+        .pos(200,200,0,20)
+        .vel(-30,30,-30,30)
+        .gravity(0,0)
+        .life(0.3,0.6)
+        .delay(0, 0.2)
+        .img(smokeImgs)
+    ;
 
-var e = new Emitter(30)
-        .pos(200,200,10,15)
+var trail = new Emitter(30)
+        .pos(200,200,5,10)
         .vel(-100,100,-100,100)
         .gravity(0,0)
         .life(0.2, 0.4)
@@ -311,19 +319,27 @@ var e = new Emitter(30)
         .img(imgs)
     ;
 
-
+var flash = new Emitter(10)
+    .pos(200,200,0,18)
+    .vel(0,0,0,0)
+    .life(0.1,0.2)
+    .delay(0, 0.1)
+    .img(flashimgs)
+;
 
 var loop = app.useLoop();
 loop.flexStep = function(dt){
     dt = 0.01666;
-    e.update(dt);
+    trail.update(dt);
     smoke.update(dt);
+    flash.update(dt);
     ctx.clearRect(0,0,800,600);
     renderer.render(ctx, 0,0);
 };
 
 app.array.shuffle(renderer.sprites);
 
-e.init();
+trail.init();
 smoke.init();
+flash.init();
 loop.start();
