@@ -321,6 +321,8 @@ loop.flexStep = function(dt){
     renderer.render(ctx, 0,0);
 };
 
+app.array.shuffle(r.sprites);
+
 e.init();
 smoke.init();
 loop.start();
