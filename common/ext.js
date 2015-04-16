@@ -332,6 +332,36 @@ shapes.circle = function(fillColor, radius, strokeColor, outlineWidth){
     return new Img(image, 0, 0, canvas.width, canvas.height);
 };
 
+shapes.sphere = function(fillColor, radius, hardness){
+    if (hardness === undefined) hardness = 0.5;
+
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d");
+    canvas.width = Math.ceil(radius * 2);
+    canvas.height = Math.ceil(radius * 2);
+
+    var cx = canvas.width/2;
+    var cy = canvas.width/2;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, 2*Math.PI);
+    ctx.closePath();
+
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+
+    var grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    grd.addColorStop(0, "rgba(0,0,0,0)");
+    grd.addColorStop(1.0, "rgba(0,0,0,"+hardness.toFixed(3)+")");
+
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = grd;
+    ctx.fill();
+
+    var image = this.toImage(canvas);
+    return new Img(image, 0, 0, canvas.width, canvas.height);
+};
+
 shapes.corners = function(fillColor, width, height, cornerLength, lineWidth){
     var canvas = document.createElement("canvas");
     var ctx = canvas.getContext("2d");
@@ -400,17 +430,33 @@ shapes.addBorderToImg = function(img, color, lineWidth){
     return new Img(canvas, 0, 0, canvas.width, canvas.height);
 };
 
-shapes.compositeImg = function(srcImg, overlayImg){
+shapes.compositeImg = function(srcImg, overlayImg, alpha){
     var canvas = document.createElement("canvas");
     canvas.width = srcImg.width;
     canvas.height = srcImg.height;
     var ctx = canvas.getContext("2d");
     srcImg.draw(ctx,0,0);
+    ctx.globalAlpha = alpha || 1.0;
     ctx.globalCompositeOperation = "source-atop";
     overlayImg.draw(ctx,0,0);
 
     return new Img(canvas, 0, 0, canvas.width, canvas.height);
 };
+
+shapes.fill = function(srcImg, fillColor, fillAlpha){
+    var canvas = document.createElement("canvas");
+    canvas.width = srcImg.width;
+    canvas.height = srcImg.height;
+    var ctx = canvas.getContext("2d");
+    srcImg.draw(ctx, 0, 0);
+    ctx.globalAlpha = fillAlpha || 1.0;
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.fillStyle = fillColor;
+    ctx.fill(0,0,canvas.width,canvas.height);
+
+    return new Img(canvas, 0, 0, canvas.width, canvas.height);
+};
+
 
 
 var paths = {};
@@ -651,3 +697,109 @@ TrailCanvas.prototype.draw = function(ctx){
     this.ctx.globalAlpha = 1;
 };
 
+
+var colors = {};
+
+colors.RGBtoHSL = function(out, rgb){
+    var h,s,l;
+    var r = rgb[0]/255;
+    var g = rgb[1]/255;
+    var b = rgb[2]/255;
+
+    var min = Math.min(r,g,b);
+    var max = Math.max(r,g,b);
+    var delta = max - min;
+
+    l = (max + min) / 2;
+    if (delta === 0){ // gray
+        h = 0;
+        s = 0;
+    } else {
+        if (l < 0.5) s = delta / (max + min);
+        else s = delta / (2 - max - min);
+
+        if (r === max){
+            h = 1/6 * ((g-b)/delta);
+            if (h < 0) h += 1;
+            else if (h >= 1) h -= 1;
+        }
+
+        else if (g === max)
+            h = 1/6 * ((b-r)/delta + 2);
+        else if (b === max)
+            h = 1/6 * ((r-g)/delta + 4);
+    }
+
+    out[0] = h;
+    out[1] = s;
+    out[2] = l;
+
+    return out;
+};
+
+colors.HSLtoRGB = function(out, HSL){
+    var r,g,b,i,j;
+    var h = HSL[0];
+    var s = HSL[1];
+    var l = HSL[2];
+
+    if (s === 0){
+        r = l * 255;
+        g = l * 255;
+        b = l * 255;
+    } else {
+        if (l < 0.5) j = l * ( 1 + s );
+        else j = (l + s) - (s * l);
+
+        i = 2 * l - j;
+
+        r = 255 * this._hueToRGB(i, j, h + 1/3);
+        g = 255 * this._hueToRGB(i, j, h);
+        b = 255 * this._hueToRGB(i, j, h - 1/3);
+    }
+
+    out[0] = Math.round(r);
+    out[1] = Math.round(g);
+    out[2] = Math.round(b);
+    return out;
+};
+
+colors._hueToRGB = function(i, j, h){
+    if (h < 0) h += 1;
+    else if (h >= 1) h -= 1;
+
+    if (h < 1/6) return (i + (j - i) * h * 6);
+    if (h < 1/2) return (j);
+    if (h < 2/3) return (i + (j - i) * (2/3 - h) * 6);
+    return i;
+};
+
+colors.toRBGString = function(rgb){
+    var r = rgb[0].toFixed(0);
+    var g = rgb[1].toFixed(0);
+    var b = rgb[2].toFixed(0);
+    return "rgb("+r+","+g+","+b+")";
+};
+
+colors.toRGBAString = function(rgba){
+    var r = rgba[0].toFixed(0);
+    var g = rgba[1].toFixed(0);
+    var b = rgba[2].toFixed(0);
+    var a = rgba[3].toFixed(3);
+    return "rgba("+r+","+g+","+b+","+a+")";
+};
+    
+colors.toHSLString = function(hsl){
+    var h = (hsl[0] * 360).toFixed(0);
+    var s = (hsl[1] * 100).toFixed(0)+"%";
+    var l = (hsl[2] * 100).toFixed(0)+"%";
+    return "hsl("+h+","+s+","+l+")";
+};
+
+colors.toHSLAString = function(hsla){
+    var h = (hsla[0] * 360).toFixed(0);
+    var s = (hsla[1] * 100).toFixed(0)+"%";
+    var l = (hsla[2] * 100).toFixed(0)+"%";
+    var a = hsla[3].toFixed(3);
+    return "hsla("+h+","+s+","+l+","+a+")";
+};
