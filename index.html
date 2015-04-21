@@ -1,18 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>DEMO</title>
+    <title>PACKING v-0.001</title>
 </head>
+
 <body>
+    <div>
+        <input type="file" id="filesin" multiple />
+        Choose or drag multiple images files!
+        <p>
+        <button type="button" id="dlImage"> save image </button>
+        <button type="button" id="dlJson"> save json </button>
+    </div>
+
 <canvas id="canvas"> canvas element </canvas>
 
 <script src="common/app.js"></script>
 <script src="common/ext.js"></script>
-<script src="common/fontgui.js"></script>
-<script src="common/matrix.js"></script>
+<script src="utils/packer.js"></script>
 
-<script src="particles/noise.js"></script>
-<script src="particles/interpolater.js"></script>
-<script src="particles/noise-main.js"></script>
+
 </body>
 </html>
