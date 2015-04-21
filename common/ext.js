@@ -51,6 +51,7 @@ function RotatedImg(img, stepDegrees){
     stepDegrees = stepDegrees || 3;
     this.imgs = this._createRotatedImgs(img, stepDegrees);
     this.step = stepDegrees;
+    this.srcImage = this.imgs[0].srcImage;
 }
 
 RotatedImg.prototype._createRotatedImgs = function(img, stepDegrees){
@@ -104,6 +105,9 @@ RotatedImg.prototype.getImg = function(degrees){
     return this.imgs[Math.floor(degrees/this.step)];
 };
 
+RotatedImg.prototype.drawSrc = function(ctx, x, y){
+    this.imgs[0].draw(ctx, x, y);
+};
 
 var Renderer = (function(){
     function Sprite(img, pos){
@@ -195,6 +199,8 @@ var Renderer = (function(){
     };
 
     Renderer.prototype.recycleSprite = function(spr){
+        // this still leaves some properties of sprite, such as scale, partial etc still;
+        // perhaps those should be nullified
         spr.img = null;
         spr.visible = false;
         this.recycledSprites.push(spr);
@@ -271,12 +277,12 @@ function Bar(bgSprite, fgSprite, pos, size, offset, bgImg, fgImg){
 
 Bar.prototype.setFill = function(current, max){
     this.filled = app.math.clamp(current/max, 0.0, 1.0);
-    console.log(this.filled);
+    //console.log(this.filled);
     var w = this.size[0];
     var p = this.padding;
     var s = this.fgSprite.partial[0];
     this.fgSprite.partial[2] = (1-2*s)*this.filled+s;
-    console.log(this.fgSprite.partial);
+    //console.log(this.fgSprite.partial);
 };
 
 Bar.prototype.setVisibility = function(bool){
@@ -286,6 +292,108 @@ Bar.prototype.setVisibility = function(bool){
 
 
 
+(function (){
+
+}());
+
+
+
+function Animation(renderer, imgSeq, pos, repeat){
+    this.imgSeq = imgSeq;
+    this.sprite = renderer.newSprite(this.imgSeq[0], pos);
+    this.index = 0;
+    this.repeat = repeat !== undefined ? repeat : true;
+    this._isInUse = true;
+}
+
+function Animations(renderer, fps){
+    this.renderer = renderer;
+    this.fps = fps;
+    this.animations = [];
+    this.recycledAnimations = [];
+
+    this.timePerFrame = 1/this.fps;
+    this.timer = 0;
+}
+
+Animation.prototype.nextImg = function(jumps){
+    if (jumps === undefined) jumps = 1;
+    this.index += jumps;
+    if (this.repeat === true){
+        while (this.index >= this.imgSeq.length){
+            this.index -= this.imgSeq.length;
+        }
+
+        this.sprite.img = this.imgSeq[this.index];
+
+    } else {
+        if (this.index >= this.imgSeq.length)
+            this._isInUse = false;
+        else
+            this.sprite.img = this.imgSeq[this.index];
+    }
+};
+
+
+
+
+Animations.prototype.getAnim = function(imgSeq, pos, repeat){
+    if (this.recycledAnimations.length <= 0){
+        var anim = Object.create(Animation.prototype);
+    } else {
+        anim = this.recycledAnimations.pop();
+    }
+
+    Animation.call(anim, this.renderer, imgSeq, pos, repeat);
+    this.animations.push(anim);
+    return anim;
+};
+
+Animations.prototype.newAnim = function(imgSeq, pos, repeat){
+    if (this.recycledAnimations.length <= 0){
+        var anim = Object.create(Animation.prototype);
+    } else {
+        anim = this.recycledAnimations.pop();
+    }
+
+    Animation.call(anim, this.renderer, imgSeq, pos, repeat);
+    this.animations.push(anim);
+    return anim;
+};
+
+
+Animations.prototype.recAnim = function(anim){
+    anim._isInUse = false;
+};
+
+Animations.prototype.play = function(dt){
+    this.timer += dt;
+    if (this.timer >= this.timePerFrame){
+        if (this.timer > this.timePerFrame * 2){
+            var jumps = Math.floor(this.timer / this.timePerFrame);
+        } else {
+            jumps = 1;
+        }
+        this.timer -= jumps * this.timePerFrame;
+
+        for (var i = 0, l = this.animations.length; i<l; i++){
+            var a = this.animations[i];
+            if (a._isInUse){
+                a.nextImg(jumps);
+            } else { // remove anim from animation list and put it to recycled
+                a.sprite.img = null;
+                a.imgSeq = null;
+                this.renderer.recycleSprite(a.sprite);
+                this.recycledAnimations.push(a);
+                app.array.swapDelete(this.animations, i);
+                i --;
+                l --;
+            }
+        }
+    }
+};
+
+
 
 var shapes = {};
 
@@ -293,6 +401,16 @@ shapes.toImage = function(canvas){
     var image = new Image();
     image.src = canvas.toDataURL();
     return image;
+};
+
+shapes.transparent = function(img, alpha){
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    ctx.globalAlpha = alpha;
+    img.draw(ctx, 0, 0);
+    return new Img(canvas, 0, 0, canvas.width, canvas.height);
 };
 
 shapes.rect = function(fillColor, width, height, strokeColor, outlineWidth){
@@ -308,8 +426,7 @@ shapes.rect = function(fillColor, width, height, strokeColor, outlineWidth){
         ctx.strokeRect(0,0,canvas.width,canvas.height);
     }
 
-    var image = this.toImage(canvas);
-    return new Img(image, 0, 0, canvas.width, canvas.height);
+    return new Img(canvas, 0, 0, canvas.width, canvas.height);
 };
 
 shapes.circle = function(fillColor, radius, strokeColor, outlineWidth){
@@ -322,14 +439,13 @@ shapes.circle = function(fillColor, radius, strokeColor, outlineWidth){
     ctx.arc(canvas.width/2, canvas.height/2, radius, 0, 2*Math.PI);
     ctx.closePath();
     ctx.fill();
-    if (strokeColor){
+    if (app.types.isString(strokeColor)){
         ctx.strokeStyle = strokeColor;
         ctx.lineWidth = outlineWidth || 1;
         ctx.stroke();
     }
 
-    var image = this.toImage(canvas);
-    return new Img(image, 0, 0, canvas.width, canvas.height);
+    return new Img(canvas, 0, 0, canvas.width, canvas.height);
 };
 
 shapes.sphere = function(fillColor, radius, hardness){
@@ -358,8 +474,7 @@ shapes.sphere = function(fillColor, radius, hardness){
     ctx.fillStyle = grd;
     ctx.fill();
 
-    var image = this.toImage(canvas);
-    return new Img(image, 0, 0, canvas.width, canvas.height);
+    return new Img(canvas, 0, 0, canvas.width, canvas.height);
 };
 
 shapes.corners = function(fillColor, width, height, cornerLength, lineWidth){
@@ -391,8 +506,33 @@ shapes.corners = function(fillColor, width, height, cornerLength, lineWidth){
     ctx.closePath();
     ctx.stroke();
 
-    var image = this.toImage(canvas);
-    return new Img(image, 0, 0, canvas.width, canvas.height);
+    return new Img(canvas, 0, 0, canvas.width, canvas.height);
+};
+
+shapes.triangle = function(fillColor, width, height, strokeColor, outlineWidth){
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d");
+    canvas.width = width !== undefined ? width : 32;
+    canvas.height = height !== undefined ? height : 32;
+    ctx.fillStyle = fillColor;
+
+    var heightToWidth = 0.8660254; // tan(60 degrees) / 2; make equilateral triangle if w === h
+    var w = (height - 2) * heightToWidth;
+    var x = (width - w)/2;
+
+    ctx.moveTo(x,1);
+    ctx.lineTo(x, height-1);
+    ctx.lineTo(width-x, height/2);
+
+    ctx.closePath();
+    ctx.fill();
+    if (strokeColor){
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = outlineWidth || 1;
+        ctx.stroke();
+    }
+
+    return new Img(canvas, 0, 0, canvas.width, canvas.height);
 };
 
 shapes.rightTriangle = function(fillColor, width, height, strokeColor, outlineWidth){
@@ -413,8 +553,7 @@ shapes.rightTriangle = function(fillColor, width, height, strokeColor, outlineWi
         ctx.stroke();
     }
 
-    var image = this.toImage(canvas);
-    return new Img(image, 0, 0, canvas.width, canvas.height);
+    return new Img(canvas, 0, 0, canvas.width, canvas.height);
 };
 
 shapes.addBorderToImg = function(img, color, lineWidth){
@@ -426,6 +565,43 @@ shapes.addBorderToImg = function(img, color, lineWidth){
     ctx.strokeStyle = color;
     ctx.lineWidth = lineWidth || 1;
     ctx.strokeRect(0,0,canvas.width,canvas.height);
+
+    return new Img(canvas, 0, 0, canvas.width, canvas.height);
+};
+
+/**
+ * if forceWidth and forceHeight is not given, then the result img may be bigger than the srcImg
+ * but has the same shape as original (drawing a square at an angle cause it to grow both in width and height
+ * otherwise, the result img width and height will be same as forceWidth and forceHeight, however
+ * parts of img may get chopped off
+ */
+shapes.transformed = function(img, radians, forceWidth, forceHeight){
+    var iw = img.width;
+    var ih = img.height;
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d");
+    var cx, cy;
+    var diameter = Math.ceil(Math.sqrt(iw*iw + ih*ih));
+    if (forceWidth && forceHeight){
+        canvas.width = forceWidth;
+        canvas.height = forceHeight;
+        cx = forceWidth/2;
+        cy = forceHeight/2;
+        ctx.translate(cx, cy);
+        ctx.rotate(radians);
+        ctx.drawImage(img.srcImage, img.x, img.y, img.width, img.height, -cx, -cy, forceWidth, forceHeight);
+        //ctx.fillRect(-1, -1, 2, 2);
+        ctx.setTransform(1,0,0,1,0,0);
+        //ctx.strokeRect(0,0,canvas.width, canvas.height);
+    } else {
+        cx = cy = diameter/2;
+        canvas.width = diameter;
+        canvas.height = diameter;
+        ctx.translate(cx, cy);
+        ctx.rotate(radians);
+        ctx.drawImage(img.srcImage, -iw/2, -ih/2);
+        ctx.setTransform(1,0,0,1,0,0);
+    }
 
     return new Img(canvas, 0, 0, canvas.width, canvas.height);
 };
@@ -454,6 +630,15 @@ shapes.fill = function(srcImg, fillColor, fillAlpha){
     ctx.fillStyle = fillColor;
     ctx.fill(0,0,canvas.width,canvas.height);
 
+    return new Img(canvas, 0, 0, canvas.width, canvas.height);
+};
+
+shapes.rescaled = function(img, width, height){
+    var canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    var ctx = canvas.getContext("2d");
+    ctx.drawImage(img.srcImage, img.x, img.y, img.width, img.height, 0, 0, width, height);
     return new Img(canvas, 0, 0, canvas.width, canvas.height);
 };
 
@@ -662,6 +847,31 @@ SpatialHashGrid.prototype.getAllInRect = function(out, x, y, w, h, additionalReq
     return out;
 };
 
+SpatialHashGrid.prototype.getAllInCircle = function(out, x, y, radius, additionalRequirements){
+    var floor = Math.floor;
+    var size = this.gridSize;
+    var distSqr = radius*radius;
+    for (var i = floor((x-radius)/size), ii = floor((x+radius)/size); i<=ii; i++){ // NOTE THE <= !!!!
+        for (var j = floor((y-radius)/size), jj = floor((y+radius)/size); j<=jj; j++){
+            var cell = this.getCellIJ(i,j);
+
+            for (var k = 0, l = cell.length; k<l; k++){
+                var o = cell[k];
+
+                var dx = o.pos[0] - x;
+                var dy = o.pos[1] - y;
+                if ((dx*dx + dy*dy) < distSqr){
+                    if (additionalRequirements && !additionalRequirements(o)) continue;
+                    out.push(o);
+                }
+            }
+        }
+    }
+
+    return out;
+};
+
+
 function TrailCanvas(width, height, alphaStep){
     this.width = width;
     this.height = height;
@@ -697,6 +907,51 @@ TrailCanvas.prototype.draw = function(ctx){
     this.ctx.globalAlpha = 1;
 };
 
+
+function TrailCanvasWithCamera(camera, alphaDecay){
+    this.cornerPos = camera.cornerPos;
+    this.viewSize = camera.viewSize;
+    this.maxSize = camera.boundSize;
+
+    this.alphaStep = alphaDecay;
+    var width = this.maxSize[0];
+    var height = this.maxSize[1];
+
+    this.canvas = document.createElement("canvas");
+    this.ctx = this.canvas.getContext("2d");
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.ctx.globalAlpha = this.alphaStep;
+
+    this.otherCanvas = document.createElement("canvas");
+    this.otherCtx = this.otherCanvas.getContext("2d");
+    this.otherCanvas.width = width;
+    this.otherCanvas.height = height;
+    this.otherCtx.globalAlpha = this.alphaStep;
+}
+
+TrailCanvasWithCamera.prototype.draw = function(ctx){
+    var sx = this.cornerPos[0] + this.maxSize[0]/2;
+    var sy = this.cornerPos[1] + this.maxSize[1]/2;
+    var sw = this.viewSize[0];
+    var sh = this.viewSize[1];
+
+    ctx.drawImage(this.canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+
+
+    //this.otherCtx.globalAlpha = this.alphaStep;
+    this.otherCtx.drawImage(this.canvas, sx, sy, sw, sh, sx, sy, sw, sh);
+    this.ctx.clearRect(0,0,this.maxSize[0], this.maxSize[1]);
+
+    // swap canvas and context
+    var oCtx = this.otherCtx;
+    var oCanvas = this.otherCanvas;
+    this.otherCtx = this.ctx;
+    this.otherCanvas = this.canvas;
+    this.ctx = oCtx;
+    this.canvas = oCanvas;
+    //this.ctx.globalAlpha = 1;
+};
 
 var colors = {};
 
@@ -753,9 +1008,9 @@ colors.HSLtoRGB = function(out, HSL){
 
         i = 2 * l - j;
 
-        r = 255 * this._hueToRGB(i, j, h + 1/3);
-        g = 255 * this._hueToRGB(i, j, h);
-        b = 255 * this._hueToRGB(i, j, h - 1/3);
+        r = 255 * colors._hueToRGB(i, j, h + 1/3);
+        g = 255 * colors._hueToRGB(i, j, h);
+        b = 255 * colors._hueToRGB(i, j, h - 1/3);
     }
 
     out[0] = Math.round(r);
@@ -788,7 +1043,7 @@ colors.toRGBAString = function(rgba){
     var a = rgba[3].toFixed(3);
     return "rgba("+r+","+g+","+b+","+a+")";
 };
-    
+
 colors.toHSLString = function(hsl){
     var h = (hsl[0] * 360).toFixed(0);
     var s = (hsl[1] * 100).toFixed(0)+"%";
